@@ -1,0 +1,128 @@
+#include <iostream>
+#include <fstream>
+#include <vector>
+#include <algorithm>
+#include <iomanip>
+
+struct Transaction {
+    std::string type; // "income" or "expense"
+    std::string description;
+    double amount;
+    std::string date;
+};
+
+std::vector<Transaction> transactions;
+
+// Save to file
+void saveToFile(const std::string& filename) {
+    std::ofstream file(filename);
+    for (const auto& t : transactions) {
+        file << t.type << ',' << t.description << ',' << t.amount << ',' << t.date << '\n';
+    }
+    file.close();
+}
+
+// Load from file
+void loadFromFile(const std::string& filename) {
+    transactions.clear();
+    std::ifstream file(filename);
+    std::string line;
+    while (getline(file, line)) {
+        Transaction t;
+        size_t pos = 0, prev = 0;
+        int field = 0;
+        while ((pos = line.find(',', prev)) != std::string::npos) {
+            std::string token = line.substr(prev, pos - prev);
+            if (field == 0) t.type = token;
+            else if (field == 1) t.description = token;
+            else if (field == 2) t.amount = std::stod(token);
+            prev = pos + 1;
+            field++;
+        }
+        t.date = line.substr(prev);
+        transactions.push_back(t);
+    }
+    file.close();
+}
+
+void addTransaction() {
+    Transaction t;
+    std::cout << "Enter type (income/expense): ";
+    std::cin >> t.type;
+    std::cin.ignore();
+    std::cout << "Enter description: ";
+    std::getline(std::cin, t.description);
+    std::cout << "Enter amount: ";
+    std::cin >> t.amount;
+    std::cin.ignore();
+    std::cout << "Enter date (YYYY-MM-DD): ";
+    std::getline(std::cin, t.date);
+    transactions.push_back(t);
+}
+
+void displayTransactions() {
+    std::cout << std::fixed << std::setprecision(2);
+    std::cout << "All Transactions:\n";
+    std::cout << "Type\tDescription\tAmount\tDate\n";
+    for (const auto& t : transactions) {
+        std::cout << t.type << '\t' << t.description << '\t' << t.amount << '\t' << t.date << '\n';
+    }
+}
+
+// Filter expenses over $100
+void filterExpensesOver100() {
+    std::cout << "Expenses over $100:\n";
+    for (const auto& t : transactions) {
+        if (t.type == "expense" && t.amount > 100) {
+            std::cout << t.description << " - $" << t.amount << " on " << t.date << '\n';
+        }
+    }
+}
+
+// Sort transactions by amount
+void sortByAmount() {
+    std::sort(transactions.begin(), transactions.end(),
+              [](const Transaction& a, const Transaction& b) { return a.amount < b.amount; });
+    std::cout << "Transactions sorted by amount.\n";
+}
+
+// ASCII bar chart of monthly spending (grouped by month)
+#include <map>
+
+void asciiBarChart() {
+    std::map<std::string, double> monthlyExpenses;
+    for (const auto& t : transactions) {
+        if (t.type == "expense") {
+            // Extract YYYY-MM
+            std::string month = t.date.substr(0, 7);
+            monthlyExpenses[month] += t.amount;
+        }
+    }
+    std::cout << "\nMonthly Spending Bar Chart:\n";
+    for (auto& [month, amt] : monthlyExpenses) {
+        std::cout << month << ": ";
+        int bars = static_cast<int>(amt / 10); // 1 bar = $10
+        for (int i = 0; i < bars; i++) std::cout << '#';
+        std::cout << " $" << amt << '\n';
+    }
+}
+
+int main() {
+    std::string filename = "finance_data.txt";
+    loadFromFile(filename);
+
+    while (true) {
+        std::cout << "\n1. Add transaction\n2. Display all\n3. Filter expenses > $100\n4. Sort by amount\n5. Show bar chart\n6. Save & Exit\nChoose: ";
+        int choice; std::cin >> choice;
+        std::cin.ignore();
+        switch(choice) {
+            case 1: addTransaction(); break;
+            case 2: displayTransactions(); break;
+            case 3: filterExpensesOver100(); break;
+            case 4: sortByAmount(); break;
+            case 5: asciiBarChart(); break;
+            case 6: saveToFile(filename); std::cout << "Saved. Exiting.\n"; return 0;
+            default: std::cout << "Invalid choice.\n";
+        }
+    }
+}
